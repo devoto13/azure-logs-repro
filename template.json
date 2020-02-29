@@ -1,0 +1,69 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "unique_prefix": {
+            "type": "string"
+        }
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('unique_prefix'), '-interlink-proxy')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "containers": [
+                    {
+                        "name": "interlink-proxy",
+                        "properties": {
+                            "image": "devoto13/log-analytics-repro:latest",
+                            "ports": [
+                                {
+                                    "protocol": "TCP",
+                                    "port": 80
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "memoryInGB": 2,
+                                    "cpu": 1
+                                }
+                            }
+                        }
+                    }
+                ],
+                "restartPolicy": "Always",
+                "ipAddress": {
+                    "ports": [
+                        {
+                            "protocol": "TCP",
+                            "port": 80
+                        }
+                    ],
+                    "type": "Public",
+                    "dnsNameLabel": "[concat(parameters('unique_prefix'), '-interlink-proxy')]"
+                },
+                "osType": "Linux",
+                "diagnostics": {
+                    "logAnalytics": {
+                        "workspaceId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('unique_prefix'))).customerId]",
+                        "workspaceKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('unique_prefix')), '2015-11-01-preview').primarySharedKey]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "[parameters('unique_prefix')]",
+            "type": "Microsoft.OperationalInsights/workspaces",
+            "apiVersion": "2015-11-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "sku": {
+                    "name": "PerGB2018"
+                },
+                "retentionInDays": 31
+            }
+        }
+    ]
+}
